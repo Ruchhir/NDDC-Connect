@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NDDC Connect</title>
+
+<style>
+body{
+    background:
+        radial-gradient(circle at top,
+            rgba(240,185,11,0.08),
+            transparent 35%),
+        #0d1117;
+
+    color:white;
+    font-family:Arial, sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:20px;
+    min-height:100vh;
+    margin:0;
+}
+
+.container{
+    width:100%;
+    max-width:400px;
+    animation:fadeIn 0.6s ease;
+}
+
+.card{
+    background:#161b22;
+    border:1px solid #30363d;
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:12px;
+    cursor:pointer;
+
+    transition:
+        transform 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease;
+}
+
+.card:hover{
+    transform:translateY(-4px);
+    border-color:#f0b90b;
+    box-shadow:0 10px 25px rgba(240,185,11,0.15);
+}
+
+.card.selected{
+    border-color:#f0b90b;
+    background:#1f2937;
+    box-shadow:0 0 0 2px rgba(240,185,11,0.25);
+    transform:translateY(-2px);
+}
+
+button{
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:12px;
+    background:#f0b90b;
+    color:#111;
+    font-weight:bold;
+    font-size:16px;
+    cursor:pointer;
+    margin-top:16px;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        opacity 0.2s ease;
+}
+
+button:hover:not(:disabled){
+    transform:translateY(-2px);
+    box-shadow:0 8px 20px rgba(240,185,11,0.35);
+}
+
+button:active:not(:disabled){
+    transform:scale(0.98);
+}
+
+button:disabled{
+    background:#444;
+    color:#999;
+    cursor:not-allowed;
+}
+
+.loading-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(13,17,23,0.95);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:12px;
+    z-index:999;
+}
+
+.loading-overlay.show{
+    display:flex;
+}
+
+.spinner{
+    width:48px;
+    height:48px;
+    border:4px solid rgba(255,255,255,0.15);
+    border-top-color:#f0b90b;
+    border-radius:50%;
+    animation:spin 0.8s linear infinite;
+}
+
+@keyframes spin{
+    to{
+        transform:rotate(360deg);
+    }
+}
+
+@keyframes fadeIn{
+    from{
+        opacity:0;
+        transform:translateY(20px);
+    }
+
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>NDDC Connect</h1>
+
+    <p>Choose your plan</p>
+
+    <div class="card"
+         data-plan-id="1"
+         data-name="Lite"
+         data-price="300"
+         onclick="selectPlan(this)">
+        <h3>⚡ Lite</h3>
+        <p>6 Hours</p>
+        <strong>₦300</strong>
+    </div>
+
+    <div class="card"
+         data-plan-id="2"
+         data-name="Daily"
+         data-price="800"
+         onclick="selectPlan(this)">
+        <h3>📚 Daily</h3>
+        <p>24 Hours</p>
+        <strong>₦800</strong>
+    </div>
+
+    <div class="card"
+         data-plan-id="3"
+         data-name="Weekly"
+         data-price="2500"
+         onclick="selectPlan(this)">
+        <h3>📆 Weekly</h3>
+        <p>7 Days</p>
+        <strong>₦2,500</strong>
+    </div>
+
+    <div class="card"
+         data-plan-id="4"
+         data-name="Monthly"
+         data-price="8500"
+         onclick="selectPlan(this)">
+        <h3>🚀 Monthly</h3>
+        <p>30 Days</p>
+        <strong>₦8,500</strong>
+    </div>
+
+    <button id="payBtn"
+            disabled
+            onclick="startPayment()">
+        Select a plan
+    </button>
+
+</div>
+
+<!-- SINGLE loading overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Redirecting to Paystack...</p>
+</div>
+
+<script>
+
+let selectedPlan = null;
+
+function selectPlan(card){
+
+    document.querySelectorAll('.card')
+        .forEach(c => c.classList.remove('selected'));
+
+    card.classList.add('selected');
+
+    selectedPlan = {
+        planId: card.dataset.planId,
+        name: card.dataset.name,
+        price: card.dataset.price
+    };
+
+    const btn = document.getElementById('payBtn');
+
+    btn.disabled = false;
+
+    btn.textContent =
+        `Pay ₦${Number(selectedPlan.price).toLocaleString()} for ${selectedPlan.name}`;
+}
+
+async function startPayment(){
+
+    if(!selectedPlan) return;
+
+    // Get MAC from hotspot redirect URL
+    const params = new URLSearchParams(window.location.search);
+
+    const mac =
+        params.get("mac") ||
+        "PENDING";
+
+    // Show loading animation
+    document
+        .getElementById('loadingOverlay')
+        .classList.add('show');
+
+    try {
+
+        const response = await fetch(
+            '/api/create-payment',
+            {
+                method:'POST',
+
+                headers:{
+                    'Content-Type':'application/json'
+                },
+
+                body:JSON.stringify({
+                    plan_id:selectedPlan.planId,
+                    mac_address:mac
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if(data.success){
+
+            window.location.href = data.checkout_url;
+
+        }else{
+
+            alert(data.message);
+
+            document
+                .getElementById('loadingOverlay')
+                .classList.remove('show');
+        }
+
+    } catch (error) {
+
+        alert("Unable to connect to the payment server.");
+
+        document
+            .getElementById('loadingOverlay')
+            .classList.remove('show');
+    }
+}
+
+</script>
+
+</body>
+</html>
