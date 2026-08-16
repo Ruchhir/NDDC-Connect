@@ -1,3 +1,6 @@
+## <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/8bb4b465-379c-4bca-b931-d14382a54318" />
+
+
 # NDDC Connect 🌐
 
 ### Self-Service Hostel Wi-Fi & ISP Automation Platform
